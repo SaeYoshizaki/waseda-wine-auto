@@ -1,0 +1,43 @@
+name: WINE 自動延長
+
+on:
+  schedule:
+    - cron: "17 22 * * *" # 毎日 7:17 JST (GitHub の混雑を避けて毎時0分は外す)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "延長せずに確認だけする"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renew
+
+jobs:
+  renew:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - name: 延長
+        env:
+          WASEDA_EMAIL: ${{ secrets.WASEDA_EMAIL }}
+          WASEDA_PASSWORD: ${{ secrets.WASEDA_PASSWORD }}
+        run: python renew.py ${{ inputs.dry_run && '--dry-run' || '' }}
+      - name: 失敗時の画面を保存
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug
+          path: debug/
+          retention-days: 3
+          if-no-files-found: ignore
