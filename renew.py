@@ -106,6 +106,7 @@ def renew_loan(api, auth, loan_id):
     data = check_reply(
         api.post(RENEW_API, headers={"Authorization": auth}, data={"id": loan_id}), "延長"
     )
+    print("renew_loans 応答:", json.dumps(data, ensure_ascii=False), file=sys.stderr)
     result = (((data.get("data") or {}).get("loans") or {}).get("loan") or [{}])[0]
     ok = data.get("status") == "ok" and result.get("renewed") == "Y"
     return ok, result
