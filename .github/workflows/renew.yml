@@ -10,7 +10,7 @@ on:
         type: boolean
         default: true
       days_before:
-        description: "期限の何日前から延長するか (空欄なら5)"
+        description: "期限の何日前から延長するか (空欄なら変数 DAYS_BEFORE、それも無ければ5)"
         type: number
 
 permissions:
@@ -35,7 +35,8 @@ jobs:
         env:
           WASEDA_EMAIL: ${{ secrets.WASEDA_EMAIL }}
           WASEDA_PASSWORD: ${{ secrets.WASEDA_PASSWORD }}
-        run: python renew.py ${{ inputs.days_before && format('--days-before {0}', inputs.days_before) || '' }} ${{ inputs.dry_run && '--dry-run' || '' }}
+          DAYS_BEFORE: ${{ inputs.days_before || vars.DAYS_BEFORE }}
+        run: python renew.py ${{ inputs.dry_run && '--dry-run' || '' }}
       - name: 失敗時の画面を保存
         if: failure()
         uses: actions/upload-artifact@v4

@@ -1,32 +1,61 @@
-# wine-auto-renew
+# waseda-wine-auto-renew
 
-早稲田大学図書館 WINE で借りている本を、返却期限の5日前から自動で延長する自分用ツール。
-GitHub Actions で毎朝 7:17 (JST) に動く。
+早稲田大学図書館の WINE で借りている本を、GitHub Actions で毎朝自動延長するツールです。
+
+> [!WARNING]
+> 早稲田大学・早稲田大学図書館とは関係のない**非公式**ツールです。自己責任で使ってください。
+
+## できること
+
+- 毎朝 7:17 (JST) に WINE にログインし、**返却期限まで5日以内の本を延長**する
+- 次のときは GitHub から通知メールが届く (ジョブを失敗させて知らせる)
+  - 予約が入っている・最大延長日に達したなど、延長できない本の期限が近づいた
+  - 延長やログインに失敗した
+- 結果は Actions の各実行ページ (Summary) に一覧で出る
+
+```
+WINE 自動延長 2026-11-22
+✅ 延長: 〇〇〇〇 … 2026/11/27 → 2026/12/06
+・ そのまま: △△△△ … 期限 2026/12/10 (期限まで18日)
+⚠️ 要対応: □□□□ … 期限 2026/11/25: 延長できません(予約が入っている等)。期限までに返却してください
+```
+
+### 使えない人
+
+- Waseda メールアドレス + MyWaseda のパスワードでログインする学生・教職員向けです。図書館カード (Y番号) でログインする人には対応していません
+- ログイン時に二段階認証を求められるアカウントでは動きません
+
+## 使い方
+
+1. このページ右上の **Use this template → Create a new repository** で自分用のリポジトリを作る
+   - **Visibility は必ず Private にしてください。** Public だと実行ログに借りている本のタイトルが公開されます
+2. 作ったリポジトリの **Settings → Secrets and variables → Actions → New repository secret** で次の2つを登録する
+   - `WASEDA_EMAIL`: Waseda メールアドレス
+   - `WASEDA_PASSWORD`: MyWaseda のパスワード
+3. **Actions タブ → WINE 自動延長 → Run workflow** を、dry_run にチェックを入れたまま実行する
+   - 延長はせずに確認だけします。Summary に借りている本の一覧が出れば準備完了です
+4. あとは毎朝自動で動きます
+
+- MyWaseda のパスワードを変えたら `WASEDA_PASSWORD` も更新してください
+- 何日前から延長するかは、同じ画面の **Variables** タブで `DAYS_BEFORE` (例: `3`) を作ると変えられます
+- 卒業・修了で WINE にログインできなくなったら、Actions タブのワークフロー画面から **Disable workflow** で止めてください
 
 ## しくみ
 
-- WINE (Ex Libris Primo VE) に Waseda メール + パスワードでログインし、My Library の貸出一覧を取得する
-- 期限まで5日以内の本を延長する
-  - 延長後の期限は「延長した日 + 貸出期間」(14日の本なら約9日ごとに延長することになる)
-  - 失敗しても期限まで毎朝再挑戦できる。延長回数に上限はなく、最大延長日は決まっているので早めでも損はない
-  - 延長は返却期限の3日後までできる
-- 次の場合はジョブを失敗させ、GitHub から通知メールが届くようにする
-  - 予約が入っている・最大延長日に達したなど、延長できない本の期限が5日以内になった
-  - 延長に失敗した
-  - 期限を過ぎてから延長した (実行が抜けた日があった)
-  - ログインに失敗した
+- WINE は Ex Libris 社の Primo VE で動いています。Playwright (ヘッドレス Chromium) で Microsoft のサインイン画面を通ってログインし、My Library の画面が内部で使っている API で貸出一覧の取得と延長を行います
+  - `GET /primaws/rest/priv/myaccount/loans` … 貸出一覧 (返却期限・最大延長日・延長可否)
+  - `POST /primaws/rest/priv/myaccount/renew_loans` … 1冊ずつ延長
+- 図書館の延長ルール ([貸出](https://www.waseda.jp/library/services/borrowing/) / [WINE ヘルプ](https://waseda-jp.libguides.com/c.php?g=920138&p=6636298))
+  - 新しい返却期限は「延長した日 + 貸出期間」
+  - 延長は1日1回まで、回数の上限なし、返却期限の3日後まで可能
+  - 最大延長日を超えては延長できない (それ以上は貸出カウンターで再貸出)
+- 期限の5日前から延長するのは、失敗しても期限まで毎朝再挑戦できるようにするためです。最大延長日は決まっているので、早めに延長しても借りられる期間の合計は変わりません
 
-結果は Actions の各実行ページ (Summary) に一覧で出る。
+## 注意
 
-## セットアップ
-
-1. このリポジトリを **Private** で GitHub に置く
-2. Settings → Secrets and variables → Actions に次の2つを登録する
-   - `WASEDA_EMAIL`: Waseda メールアドレス
-   - `WASEDA_PASSWORD`: MyWaseda のパスワード
-3. Actions タブ → 「WINE 自動延長」→ Run workflow (dry_run にチェック) で、延長せずに動作確認する
-
-パスワードを変えたら `WASEDA_PASSWORD` も更新すること。
+- パスワードは GitHub Secrets に暗号化して保存され、ログには `***` と表示されます。それでも大学アカウントのパスワードを外部サービスに預けることになるので、納得した上で使ってください
+- やっていることは、1日1回、自分のアカウントで My Library を開いて延長ボタンを押すのと同じです。実行頻度を上げないでください
+- WINE の画面や仕組みが変わると動かなくなることがあります。そのときはエラーの通知が届くので、手動で延長してください
 
 ## 手元で試す
 
@@ -38,5 +67,16 @@ python -m playwright install chromium
 python renew.py --headed --dry-run
 ```
 
-`--days-before N` で「期限の何日前から延長するか」を変えられる (既定 5)。
-GitHub の Run workflow でも `days_before` で指定できる。
+## English
+
+An unofficial tool that automatically renews your Waseda University Library (WINE) loans every morning with GitHub Actions.
+
+1. Click **Use this template** and create a **private** repository (a public one would expose the titles you borrow in the Actions logs).
+2. Add the secrets `WASEDA_EMAIL` (your Waseda email) and `WASEDA_PASSWORD` (your MyWaseda password).
+3. Run the workflow once with `dry_run` checked to make sure it can log in and list your loans.
+
+Items are renewed when they are due within 5 days (change it with the `DAYS_BEFORE` repository variable). If an item cannot be renewed, the job fails so that GitHub emails you. Accounts that require multi-factor authentication and library-card (Y-number) accounts are not supported.
+
+## License
+
+MIT

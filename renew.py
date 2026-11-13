@@ -186,7 +186,12 @@ def report(lines, header):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--days-before", type=int, default=5, help="期限の何日前から延長するか (既定: 5)")
+    ap.add_argument(
+        "--days-before",
+        type=int,
+        default=int(os.environ.get("DAYS_BEFORE") or 5),
+        help="期限の何日前から延長するか (既定: 環境変数 DAYS_BEFORE、無ければ 5)",
+    )
     ap.add_argument("--dry-run", action="store_true", help="延長せず、何をするかだけ表示する")
     ap.add_argument("--headed", action="store_true", help="ブラウザを表示する(認証情報が無ければ手動ログイン)")
     ap.add_argument("--from-json", help="ログインせず、保存した貸出一覧JSONで判定だけ試す")
