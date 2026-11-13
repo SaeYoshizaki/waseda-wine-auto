@@ -204,8 +204,9 @@ def main():
         report(lines, header)
         return 1 if attention else 0
 
-    email = os.environ.get("WASEDA_EMAIL", "")
-    password = os.environ.get("WASEDA_PASSWORD", "")
+    # Secrets に貼り付けたときに紛れ込む末尾の改行を落とす
+    email = os.environ.get("WASEDA_EMAIL", "").strip()
+    password = os.environ.get("WASEDA_PASSWORD", "").strip("\r\n")
     if not (email and password) and not args.headed:
         print("WASEDA_EMAIL と WASEDA_PASSWORD を設定してください", file=sys.stderr)
         return 2
