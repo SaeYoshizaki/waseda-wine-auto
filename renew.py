@@ -1,6 +1,6 @@
 """早稲田大学 WINE (Ex Libris Primo VE) の貸出を、返却期限が近いものだけ自動延長する。
 
-延長後の返却期限は「延長した日 + 貸出期間」で再計算されるため、期限ぎりぎりで延長する。
+期限の数日前から延長を試み、失敗しても期限までの毎朝に再挑戦できるようにする。
 延長できない本(予約あり・最大延長日到達など)があれば終了コード 1 で知らせる。
 
 終了コード: 0 = 問題なし / 1 = 要対応の本あり / 2 = ログイン失敗などのエラー
@@ -128,7 +128,7 @@ def plan(loan, today, days_before):
         blocked = "延長できません(予約が入っている等)。期限までに返却してください"
     else:
         blocked = None
-    if blocked and left <= WARN_DAYS:
+    if blocked and left <= max(WARN_DAYS, days_before):
         return "attention", blocked
     if left > days_before or blocked:
         return "skip", f"期限まで{left}日"
@@ -186,7 +186,7 @@ def report(lines, header):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--days-before", type=int, default=1, help="期限の何日前から延長するか (既定: 1)")
+    ap.add_argument("--days-before", type=int, default=5, help="期限の何日前から延長するか (既定: 5)")
     ap.add_argument("--dry-run", action="store_true", help="延長せず、何をするかだけ表示する")
     ap.add_argument("--headed", action="store_true", help="ブラウザを表示する(認証情報が無ければ手動ログイン)")
     ap.add_argument("--from-json", help="ログインせず、保存した貸出一覧JSONで判定だけ試す")
