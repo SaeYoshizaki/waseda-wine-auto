@@ -1,4 +1,4 @@
-# waseda-wine-auto-renew
+# waseda-wine-auto
 
 早稲田大学図書館の WINE で借りている本を、GitHub Actions で毎朝自動延長するツールです。
 
